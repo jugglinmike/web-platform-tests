@@ -401,26 +401,28 @@ def get_branch_point(user):
         # current branch c.f.
         # http://stackoverflow.com/questions/13460152/find-first-ancestor-commit-in-another-branch
         branch_point = git("rev-parse", "master")
+        head = git("rev-parse", "HEAD")
         # To do this we need all the commits in the local copy
-        #fetch_wpt(user, "--unshallow", "+refs/heads/*:refs/remotes/origin/*")
-        #not_heads = [item for item in git("rev-parse", "--not", "--all").split("\n")
-        #             if not head in item]
-        #commits = git("rev-list", "HEAD", *not_heads).split("\n")
-        #first_commit = commits[-1]
-        #branch_point = git("rev-parse", first_commit + "^")
-        ## The above can produce a too-early commit if we are e.g. on master and there are
-        ## preceding changes that were rebased and so aren't on any other branch. To avoid
-        ## this issue we check for the later of the above branch point and the merge-base
-        ## with master
-        #merge_base = git("merge-base", "HEAD", "origin/master")
-        #if (branch_point != merge_base and
-        #    not git("log", "--oneline", "%s..%s" % (merge_base, branch_point)).strip()):
-        #    logger.debug("Using merge-base as the branch point")
-        #    branch_point = merge_base
-        #else:
-        #    logger.debug("Using first commit on another branch as the branch point")
+        fetch_wpt(user, "+refs/heads/*:refs/remotes/origin/*")
+        not_heads = [item for item in git("rev-parse", "--not", "--all").split("\n")
+                     if not head in item]
+        commits = git("rev-list", "HEAD", *not_heads).split("\n")
+        first_commit = commits[-1]
+        branch_point = git("rev-parse", first_commit + "^")
+        # The above can produce a too-early commit if we are e.g. on master and there are
+        # preceding changes that were rebased and so aren't on any other branch. To avoid
+        # this issue we check for the later of the above branch point and the merge-base
+        # with master
+        merge_base = git("merge-base", "HEAD", "origin/master")
+        if (branch_point != merge_base and
+            not git("log", "--oneline", "%s..%s" % (merge_base, branch_point)).strip()):
+            logger.debug("Using merge-base as the branch point")
+            branch_point = merge_base
+        else:
+            logger.debug("Using first commit on another branch as the branch point")
 
     logger.debug("Branch point from master: %s" % branch_point)
+    sys.exit(0)
     return branch_point
 
 
