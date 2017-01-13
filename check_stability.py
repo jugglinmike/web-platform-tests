@@ -570,9 +570,9 @@ def get_parser():
                         action="store",
                         default=os.environ.get("TRAVIS_PULL_REQUEST"),
                         help="PR to comment on with stability results")
-    parser.add_argument("browser",
+    parser.add_argument("product",
                         action="store",
-                        help="Browser to run against")
+                        help="Product to run against (`browser-name` or 'browser-name:channel')")
     return parser
 
 
@@ -593,13 +593,20 @@ def main():
         logger.warning("Can't log to GitHub")
         gh_handler = None
 
+    product_parts = args.product.split(":")
+    browser_name = product_parts[0]
+
     with TravisFold("browser_setup"):
-        logger.info("# %s #" % args.browser.title())
+        log_title = browser_name.title()
+        if len(product_parts) > 1:
+            log_title += " (%s channel)" % product_parts[1]
+
+        logger.info("# %s #" % log_title)
 
         browser_cls = {"firefox": Firefox,
-                       "chrome": Chrome}.get(args.browser)
+                       "chrome": Chrome}.get(browser_name)
         if browser_cls is None:
-            logger.critical("Unrecognised browser %s" % args.browser)
+            logger.critical("Unrecognised browser %s" % browser_name)
             return 1
 
         fetch_wpt_master()
