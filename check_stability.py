@@ -237,16 +237,8 @@ class Chrome(Browser):
     product = "chrome"
 
     def install(self):
-        url = "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
-        with open("google-chrome-stable.deb", "wb") as f:
-            resp = get(url)
-            f.write(resp.content)
-
-        try:
-            call("dpkg", "--install", "google-chrome-stable.deb")
-        except subprocess.CalledProcessError:
-            call("apt-get", "install", "--fix-broken")
-            call("dpkg", "--install", "google-chrome-stable.deb")
+        # Installing the Google Chrome browser requires administrative
+        # privileges, so that installation is handled by the invoking script.
 
         call("pip", "install", "-r", os.path.join("w3c", "wptrunner", "requirements_chrome.txt"))
 

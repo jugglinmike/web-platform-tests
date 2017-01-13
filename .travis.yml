@@ -46,6 +46,7 @@ matrix:
       env:
         - SCRIPT=ci_stability.sh
         - PRODUCT=chrome
+        - CHROME_CHANNEL=stable
 script:
   - bash $SCRIPT
 cache:
