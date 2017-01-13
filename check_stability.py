@@ -591,6 +591,13 @@ def main():
         gh_handler = setup_github_logging(args)
     else:
         logger.warning("Can't log to GitHub")
+        logger.warning("os.environ")
+        if len(os.environ.get("GH_TOKEN")) > 0:
+            logger.warning("first char:" + args.gh_token[0] + args.gh_token[1])
+        else:
+            logger.warning("not set...")
+
+        logger.warning("args.gh_token")
         if len(args.gh_token) > 0:
             logger.warning("first char:" + args.gh_token[0] + args.gh_token[1])
         else:

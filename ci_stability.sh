@@ -32,6 +32,11 @@ main() {
 
 echo 'TRAVIS_SECURE_ENV_VARS'
 echo $TRAVIS_SECURE_ENV_VARS
+if [ "$GH_TOKEN" == "" ]; then
+  echo It is set.
+else
+  echo It is NOT set.
+fi
 echo 'TRAVIS_SECURE_ENV_VARS'
 
 main
