@@ -591,6 +591,10 @@ def main():
         gh_handler = setup_github_logging(args)
     else:
         logger.warning("Can't log to GitHub")
+        if len(args.gh_token) > 0:
+            logger.warning("first char:" + args.gh_token[0])
+        else
+            logger.warning("not set...")
         gh_handler = None
 
     with TravisFold("browser_setup"):
