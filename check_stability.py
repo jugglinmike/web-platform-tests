@@ -492,7 +492,7 @@ def process_results(log, iterations):
     return results, inconsistent
 
 
-def format_coment_title(product):
+def format_comment_title(product):
     parts = product.split(":")
     title = parts[0].title()
 
@@ -606,7 +606,7 @@ def main():
     browser_name = args.product.split(":")[0]
 
     with TravisFold("browser_setup"):
-        logger.info("# %s #" % format_product_title(args.product))
+        logger.info("# %s #" % format_comment_title(args.product))
 
         browser_cls = {"firefox": Firefox,
                        "chrome": Chrome}.get(browser_name)
