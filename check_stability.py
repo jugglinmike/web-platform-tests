@@ -89,14 +89,14 @@ class TravisFold(object):
 
 
 class GitHub(object):
-    def __init__(self, org, repo, token, browser):
+    def __init__(self, org, repo, token, product):
         self.token = token
         self.headers = {"Accept": "application/vnd.github.v3+json"}
         self.auth = (self.token, "x-oauth-basic")
         self.org = org
         self.repo = repo
         self.base_url = "https://api.github.com/repos/%s/%s/" % (org, repo)
-        self.browser = browser
+        self.product = product
 
     def _headers(self, headers):
         if headers is None:
@@ -145,7 +145,7 @@ class GitHub(object):
         user = self.get(urljoin(self.base_url, "/user")).json()
         issue_comments_url = urljoin(self.base_url, "issues/%s/comments" % issue_number)
         comments = self.get(issue_comments_url).json()
-        title_line = "# %s #" % self.browser.title()
+        title_line = format_comment_title(self.product)
         data = {"body": body}
         for comment in comments:
             if (comment["user"]["login"] == user["login"] and
@@ -318,7 +318,7 @@ def unzip(fileobj):
 def setup_github_logging(args):
     gh_handler = None
     if args.comment_pr:
-        github = GitHub("jugglinmike", "web-platform-tests", args.gh_token, args.browser)
+        github = GitHub("jugglinmike", "web-platform-tests", args.gh_token, args.product)
         try:
             pr_number = int(args.comment_pr)
         except ValueError:
@@ -492,6 +492,16 @@ def process_results(log, iterations):
     return results, inconsistent
 
 
+def format_coment_title(product):
+    parts = product.split(":")
+    title = parts[0].title()
+
+    if len(product_parts) > 1:
+       title += " (%s channel)" % parts[1]
+
+    return "# %s #" % title
+
+
 def markdown_adjust(s):
     s = s.replace('\t', u'\\t')
     s = s.replace('\n', u'\\n')
@@ -593,15 +603,10 @@ def main():
         logger.warning("Can't log to GitHub")
         gh_handler = None
 
-    product_parts = args.product.split(":")
-    browser_name = product_parts[0]
+    browser_name = args.product.split(":")[0]
 
     with TravisFold("browser_setup"):
-        log_title = browser_name.title()
-        if len(product_parts) > 1:
-            log_title += " (%s channel)" % product_parts[1]
-
-        logger.info("# %s #" % log_title)
+        logger.info("# %s #" % format_product_title(args.product))
 
         browser_cls = {"firefox": Firefox,
                        "chrome": Chrome}.get(browser_name)
