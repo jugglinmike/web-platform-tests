@@ -30,4 +30,19 @@ main() {
     test_stability
 }
 
+echo 'TRAVIS_SECURE_ENV_VARS'
+echo $TRAVIS_SECURE_ENV_VARS
+if [ "$GH_TOKEN" == "" ]; then
+  echo GH_TOKEN is NOT set.
+else
+  echo GH_TOKEN is set.
+fi
+echo 'TRAVIS_SECURE_ENV_VARS'
+
+if [ "$FOOBAR" == "" ]; then
+  echo FOOBAR is NOT set.
+else
+  echo FOOBAR is set.
+fi
+
 main
