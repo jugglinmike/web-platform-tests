@@ -348,12 +348,12 @@ class pwd(object):
 
 
 def fetch_wpt_master():
-    git = get_git_cmd(os.path.join(os.path.abspath(os.curdir), "w3c", "web-platform-tests"))
+    git = get_git_cmd(os.path.join(os.path.abspath(os.curdir), "jugglinmike", "web-platform-tests"))
     git("fetch", "https://github.com/w3c/web-platform-tests.git", "master:master")
 
 
 def get_sha1():
-    git = get_git_cmd(os.path.join(os.path.abspath(os.curdir), "w3c", "web-platform-tests"))
+    git = get_git_cmd(os.path.join(os.path.abspath(os.curdir), "jugglinmike", "web-platform-tests"))
     return git("rev-parse", "HEAD").strip()
 
 
@@ -365,14 +365,14 @@ def build_manifest():
 
 def install_wptrunner():
     call("git", "clone", "--depth=1", "https://github.com/w3c/wptrunner.git", "w3c/wptrunner")
-    git = get_git_cmd(os.path.join(os.path.abspath(os.curdir), "w3c", "wptrunner"))
+    git = get_git_cmd(os.path.join(os.path.abspath(os.curdir), "jugglinmike", "wptrunner"))
     git("submodule", "update", "--init", "--recursive")
     call("pip", "install", os.path.join("w3c", "wptrunner"))
 
 
 def get_files_changed():
     root = os.path.abspath(os.curdir)
-    git = get_git_cmd("%s/w3c/web-platform-tests" % root)
+    git = get_git_cmd("%s/jugglinmike/web-platform-tests" % root)
     branch_point = git("merge-base", "HEAD", "master").strip()
     logger.debug("Branch point from master: %s" % branch_point)
     logger.debug(git("log", "--oneline", "%s.." % branch_point))
