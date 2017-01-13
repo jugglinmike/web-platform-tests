@@ -30,4 +30,8 @@ main() {
     test_stability
 }
 
+echo 'TRAVIS_SECURE_ENV_VARS'
+echo $TRAVIS_SECURE_ENV_VARS
+echo 'TRAVIS_SECURE_ENV_VARS'
+
 main
