@@ -496,7 +496,7 @@ def format_comment_title(product):
     parts = product.split(":")
     title = parts[0].title()
 
-    if len(product_parts) > 1:
+    if len(parts) > 1:
        title += " (%s channel)" % parts[1]
 
     return "# %s #" % title
