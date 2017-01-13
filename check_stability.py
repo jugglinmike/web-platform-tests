@@ -252,7 +252,7 @@ class Chrome(Browser):
     def wptrunner_args(self, root):
         return {
             "product": "chrome",
-            "binary": "/usr/bin/google-chrome" % root,
+            "binary": "/usr/bin/google-chrome",
             "webdriver_binary": "%s/chromedriver" % root,
             "test_types": ["testharness", "reftest"]
         }
