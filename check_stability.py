@@ -318,7 +318,7 @@ def unzip(fileobj):
 def setup_github_logging(args):
     gh_handler = None
     if args.comment_pr:
-        github = GitHub("w3c", "web-platform-tests", args.gh_token, args.browser)
+        github = GitHub("jugglinmike", "web-platform-tests", args.gh_token, args.browser)
         try:
             pr_number = int(args.comment_pr)
         except ValueError:
