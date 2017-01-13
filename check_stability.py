@@ -237,10 +237,17 @@ class Chrome(Browser):
     product = "chrome"
 
     def install(self):
-        latest = get("https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/Linux_x64%2FLAST_CHANGE?alt=media").text.strip()
-        url = "https://www.googleapis.com/download/storage/v1/b/chromium-browser-snapshots/o/Linux_x64%%2F%s%%2Fchrome-linux.zip?alt=media" % latest
-        unzip(get(url).raw)
-        logger.debug(call("ls", "-lhrt", "chrome-linux"))
+        url = "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+        with open("google-chrome-stable.deb", "wb") as f:
+            resp = get(url)
+            f.write(resp.content)
+
+        try:
+            call("dpkg", "--install", "google-chrome-stable.deb")
+        except subprocess.CalledProcessError:
+            call("apt-get", "install", "--fix-broken")
+            call("dpkg", "--install", "google-chrome-stable.deb")
+
         call("pip", "install", "-r", os.path.join("w3c", "wptrunner", "requirements_chrome.txt"))
 
     def install_webdriver(self):
