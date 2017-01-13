@@ -253,6 +253,7 @@ class Chrome(Browser):
         return {
             "product": "chrome",
             "binary": "/usr/bin/google-chrome",
+            "binary_arg": "--no-sandbox",
             "webdriver_binary": "%s/chromedriver" % root,
             "test_types": ["testharness", "reftest"]
         }
