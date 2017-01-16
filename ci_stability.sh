@@ -24,9 +24,14 @@ install_chrome() {
     channel=$1
     deb_archive=google-chrome-${channel}_current_amd64.deb
     wget https://dl.google.com/linux/direct/$deb_archive
-    sudo dpkg --install $deb_archive || true
-    sudo apt-get install --fix-broken
-    sudo dpkg --install $deb_archive
+
+    # Installation will fail in cases where the package has unmet dependencies.
+    # When this occurs, attempt to use the system package manager to fetch the
+    # required packages and retry.
+    if ! sudo dpkg --install $deb_archive; then
+      sudo apt-get install --fix-broken
+      sudo dpkg --install $deb_archive
+    fi
 }
 
 test_stability() {
