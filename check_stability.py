@@ -226,7 +226,7 @@ class Firefox(Browser):
     def wptrunner_args(self, root):
         return {
             "product": "firefox",
-            "binary": "%s/firefox/firefox" % root,
+            "binary": "/usr/bin/firefox",
             "certutil_binary": "certutil",
             "webdriver_binary": "%s/geckodriver" % root,
             "prefs_root": "%s/profiles" % root,
@@ -253,8 +253,8 @@ class Chrome(Browser):
     def wptrunner_args(self, root):
         return {
             "product": "chrome",
-            "binary": "%s/chrome-linux/chrome" % root,
-            "webdriver_binary": "%s/chromedriver" % root,
+            "binary": "/opt/web-platform-tests/chromium-latest-linux/latest/chrome",
+            "webdriver_binary": "%s/../downloads/chromedriver" % root,
             "test_types": ["testharness", "reftest"]
         }
 
@@ -353,7 +353,7 @@ def fetch_wpt_master():
 
 
 def get_sha1():
-    git = get_git_cmd(os.path.join(os.path.abspath(os.curdir), "w3c", "web-platform-tests"))
+    git = get_git_cmd(os.path.abspath(os.curdir))
     return git("rev-parse", "HEAD").strip()
 
 
@@ -372,7 +372,7 @@ def install_wptrunner():
 
 def get_files_changed():
     root = os.path.abspath(os.curdir)
-    git = get_git_cmd("%s/w3c/web-platform-tests" % root)
+    git = get_git_cmd(root)
     branch_point = git("merge-base", "HEAD", "master").strip()
     logger.debug("Branch point from master: %s" % branch_point)
     logger.debug(git("log", "--oneline", "%s.." % branch_point))
@@ -380,7 +380,7 @@ def get_files_changed():
     if not files:
         return []
     assert files[-1] == "\0"
-    return ["%s/w3c/web-platform-tests/%s" % (root, item)
+    return ["%s/%s" % (root, item)
             for item in files[:-1].split("\0")]
 
 
@@ -388,7 +388,7 @@ def get_affected_testfiles(files_changed):
     affected_testfiles = []
     all_tests = set()
     nontests_changed = set(files_changed)
-    repo_root = os.path.abspath(os.path.join(os.path.abspath(os.curdir), "w3c", "web-platform-tests"))
+    repo_root = os.curdir
     manifest_file = os.path.join(repo_root, "MANIFEST.json")
     for test, _ in manifest.load(repo_root, manifest_file):
         test_full_path = os.path.join(repo_root, test)
@@ -433,13 +433,13 @@ def get_affected_testfiles(files_changed):
 def wptrunner_args(root, files_changed, iterations, browser):
     parser = wptcommandline.create_parser([browser.product])
     args = vars(parser.parse_args([]))
-    wpt_root = os.path.join(root, "w3c", "web-platform-tests")
+    wpt_root = root
     args.update(browser.wptrunner_args(root))
     args.update({
         "tests_root": wpt_root,
         "metadata_root": wpt_root,
         "repeat": iterations,
-        "config": "%s/w3c/wptrunner/wptrunner.default.ini" % root,
+        "config": "%s/../wptrunner/wptrunner.default.ini" % root,
         "test_list": files_changed,
         "restart_on_unexpected": False,
         "pause_after_test": False
@@ -602,7 +602,7 @@ def main():
             logger.critical("Unrecognised browser %s" % args.browser)
             return 1
 
-        fetch_wpt_master()
+        #fetch_wpt_master()
 
         head_sha1 = get_sha1()
         logger.info("Testing revision %s" % head_sha1)
@@ -615,8 +615,8 @@ def main():
             logger.info("No files changed")
             return 0
 
-        build_manifest()
-        install_wptrunner()
+        #build_manifest()
+        #install_wptrunner()
         do_delayed_imports()
 
         logger.debug("Files changed:\n%s" % "".join(" * %s\n" % item for item in files_changed))
@@ -629,8 +629,8 @@ def main():
 
         browser = browser_cls(args.gh_token)
 
-        browser.install()
-        browser.install_webdriver()
+        #browser.install()
+        #browser.install_webdriver()
 
         kwargs = wptrunner_args(args.root,
                                 files_changed,
