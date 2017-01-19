@@ -25,6 +25,16 @@ install_chrome() {
     deb_archive=google-chrome-${channel}_current_amd64.deb
     wget https://dl.google.com/linux/direct/$deb_archive
 
+    echo Before uninstallation:
+    /usr/bin/google-chrome --version || true
+
+    if sudo update-alternatives --list google-chrome; then
+        sudo update-alternatives --remove-all google-chrome
+    fi
+
+    echo After uninstallation, before re-installation:
+    /usr/bin/google-chrome --version || true
+
     # Installation will fail in cases where the package has unmet dependencies.
     # When this occurs, attempt to use the system package manager to fetch the
     # required packages and retry.
@@ -32,6 +42,9 @@ install_chrome() {
       sudo apt-get install --fix-broken
       sudo dpkg --install $deb_archive
     fi
+
+    echo After installation:
+    /usr/bin/google-chrome --version
 }
 
 test_stability() {
