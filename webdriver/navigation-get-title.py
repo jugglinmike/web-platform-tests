@@ -7,6 +7,51 @@ from uuid import uuid4
 
 import time
 
+from webdriver.transport import HTTPWireProtocol
+
+def modified_send(self, method, url, body=None, headers=None, key=None):
+    """Send a command to the remote.
+
+    :param method: "POST" or "GET".
+    :param body: Body of the request.  Defaults to an empty dictionary
+        if ``method`` is "POST".
+    :param headers: Additional headers to include in the request.
+    :param key: not implemented
+    """
+
+    if body is None and method == "POST":
+        body = {}
+
+    if isinstance(body, dict):
+        body = json.dumps(body)
+
+    if isinstance(body, unicode):
+        body = body.encode("utf-8")
+
+    if headers is None:
+        headers = {}
+
+    url = self.url_prefix + url
+
+    conn = httplib.HTTPConnection(
+        self.host, self.port, strict=True, timeout=self._timeout)
+    conn.request(method, url, body, headers)
+    resp = conn.getresponse()
+    conn.close()
+
+    return Result(resp, IS_GECKO is False)
+
+@pytest.fixture()
+def psession(session, request):
+    original = HTTPWireProtocol.send
+    setattr(HTTPWireProtocol, 'send', modified_send)
+    if session.session_id is None:
+        session.start()
+
+    request.addfinalizer(lambda: setattr(HTTPWireProtocol, 'send', original))
+
+    return session
+
 IS_GECKO = True
 
 errors = {
@@ -43,7 +88,10 @@ errors = {
 def inline(doc):
     return "data:text/html;charset=utf-8,%s" % urllib.quote(doc)
 
-class Result():
+class Result(dict):
+    def __getitem__(self, name):
+        return self.body["value"][name]
+
     def __init__(self, response, validate):
         self.status = response.status
         self.body = response.read()
@@ -75,113 +123,56 @@ class Result():
         if IS_GECKO and (not "value" in self.body or "sessionId" in self.body):
             self.body = { "value": self.body }
 
-    def __str__(self):
-        return 'Result(status=%d, body=%s)' % self.status, self.body
-
-def request(
-            host, port, method, path, req_body=None, headers=None,
-            url_prefix=None, session_id=None,
-            # TODO: Enable these assertions (GeckoDriver currently fails both)
-            validate_response=False,
-            ):
-    if req_body is None and method == "POST":
-        req_body = {}
-
-    if isinstance(req_body, dict):
-        req_body = json.dumps(req_body)
-
-    if isinstance(req_body, unicode):
-        req_body = req_body.encode("utf-8")
-
-    if headers is None:
-        headers = {}
-
-    if not session_id is None:
-        path = "/session/" + session_id + path
-
-    if not url_prefix is None:
-        path = "/" + url_prefix + path
-
-    conn = httplib.HTTPConnection(host, port, strict=True)
-    try:
-        conn.request(method, path, req_body, headers)
-        response = conn.getresponse()
-    finally:
-        conn.close()
-
-    return Result(response, validate_response)
+        if isinstance(self.body["value"], dict):
+            dict.__init__(self, **self.body["value"])
+        else:
+            dict.__init__(self)
 
 @pytest.fixture()
-def command():
-    host = 'localhost'
-    port = os.environ["WD_PORT"]
-
-    def command(*args, **kwargs):
-        return request(host, port, *args, **kwargs)
-
-    return command
-
-@pytest.fixture()
-def scommand(command, request):
-    result = command("POST", "/session")
-    assert result.status == 200
-    assert "sessionId" in result.body["value"]
-    session_id = result.body["value"]["sessionId"]
-
-    def scommand(*args, **kwargs):
-        if not "session_id" in kwargs:
-            kwargs["session_id"] = session_id
-        return command(*args, **kwargs)
-
-    def delete_session():
-        result = command("DELETE", "", session_id=session_id)
-        assert result.status == 200
-        assert result.body == None
-
-    request.addfinalizer(delete_session)
-
-    return scommand
-
-@pytest.fixture()
-def switch_to_inactive(scommand):
+def switch_to_inactive(psession, request):
     def switch_to_inactive():
-        initial = scommand("GET", "/window/handles").body["value"]
+        initial = psession.send_command("GET", "window/handles").body["value"]
 
-        result = scommand("POST",
-                          "/execute/sync",
+        result = psession.send_command("POST",
+                          "execute/sync",
                           dict(script="window.open();", args=[]))
         assert result.status == 200
 
-        with_new = scommand("GET", "/window/handles").body["value"]
+        with_new = psession.send_command("GET", "window/handles").body["value"]
 
         assert len(initial) == len(with_new) - 1
 
         new_handle = (set(with_new) - set(initial)).pop()
 
-        result = scommand("POST", "/window", dict(handle=new_handle))
+        result = psession.send_command("POST", "window", dict(handle=new_handle))
 
         assert result.status == 200
 
-        scommand("DELETE", "/window")
+        psession.send_command("DELETE", "window")
+
+        def switch_back():
+            psession.send_command("POST", "window", dict(handle=initial[0]))
+
+        request.addfinalizer(switch_back)
 
     return switch_to_inactive
 
 @pytest.fixture()
-def switch_to_new_frame(scommand):
+def switch_to_new_frame(psession):
     def switch_to_new_frame():
         append = """
             var frame = document.createElement('iframe');
             document.body.appendChild(frame);
             return frame;
         """
-        result = scommand("POST", "/execute/sync", dict(script=append, args=[]))
+        result = psession.send_command("POST", "execute/sync", dict(script=append, args=[]))
         assert result.status == 200
-        result = scommand("POST", "/frame", dict(id=result.body["value"]))
+        result = psession.send_command("POST", "frame", dict(id=result.body["value"]))
         assert result.status == 200
     return switch_to_new_frame
 
 @pytest.fixture()
-def create_dialog(scommand, request):
+def create_dialog(psession, request):
     dismissed_values = {
         "alert": None,
         "prompt": None,
@@ -201,10 +192,10 @@ def create_dialog(scommand, request):
             }}, 0);
         """.format(dialog_id, dialog_type)
 
-        scommand('POST', '/execute/async', dict(script=spawn, args=[]))
+        psession.send_command('POST', 'execute/async', dict(script=spawn, args=[]))
 
         def verify():
-            result = scommand('GET', '/alert/text')
+            result = psession.send_command('GET', 'alert/text')
 
             # If there were any existing dialogs prior to the creation of this
             # fixture's dialog, then the "Get Alert Text" command will return
@@ -217,7 +208,7 @@ def create_dialog(scommand, request):
                 assert result.body["value"] != "text {0}".format(dialog_id)
 
             probe = 'return window.__WEBDRIVER;'
-            result = scommand('POST', '/execute/sync', dict(script=probe, args=[]))
+            result = psession.send_command('POST', 'execute/sync', dict(script=probe, args=[]))
             assert result.status == 200
             assert result.body["value"] == dismissed_value, "Dialog was dismissed, not accepted"
 
@@ -235,77 +226,77 @@ def assert_error(result, name):
 
 # 1. If the current top-level browsing context is no longer open, return error
 #    with error code no such window.
-def test_title_from_closed_context(scommand, switch_to_inactive):
+def test_title_from_closed_context(psession, switch_to_inactive):
     switch_to_inactive()
-    result = scommand("GET", "/title")
+    result = psession.send_command("GET", "title")
     assert_error(result, "no such window")
 
 # 2. Handle any user prompts and return its value if it is an error.
-def test_title_dismiss_dialog_alert(scommand, create_dialog):
+def test_title_dismiss_dialog_alert(psession, create_dialog):
     document = "<title>Dismiss `alert` dialog</title><h2>Hello</h2>"
-    scommand("POST", "/url", dict(url=inline(document)))
+    psession.send_command("POST", "url", dict(url=inline(document)))
     create_dialog(dialog_type='alert', verify_dismissed=True)
 
-    result = scommand("GET", "/title")
+    result = psession.send_command("GET", "title")
     assert result.status == 200
     assert result.body["value"] == "Dismiss `alert` dialog"
 
-def test_title_dismiss_dialog_prompt(scommand, create_dialog):
+def test_title_dismiss_dialog_prompt(psession, create_dialog):
     document = "<title>Dismiss `prompt` dialog</title><h2>Hello</h2>"
-    scommand("POST", "/url", dict(url=inline(document)))
+    psession.send_command("POST", "url", dict(url=inline(document)))
     create_dialog(dialog_type='prompt', verify_dismissed=True)
 
-    result = scommand("GET", "/title")
+    result = psession.send_command("GET", "title")
     assert result.status == 200
     assert result.body["value"] == "Dismiss `prompt` dialog"
 
-def test_title_dismiss_dialog_confirm(scommand, create_dialog):
+def test_title_dismiss_dialog_confirm(psession, create_dialog):
     document = "<title>Dismiss `confirm` dialog</title><h2>Hello</h2>"
-    scommand("POST", "/url", dict(url=inline(document)))
+    psession.send_command("POST", "url", dict(url=inline(document)))
     create_dialog(dialog_type='confirm', verify_dismissed=True)
 
-    result = scommand("GET", "/title")
+    result = psession.send_command("GET", "title")
     assert result.status == 200
     assert result.body["value"] == "Dismiss `confirm` dialog"
 
-def test_title_with_non_simple_dialog(scommand):
-    document = "<title>With non-simple dialog</title><h2>Hello</h2>"
-    spawn = """
-        var done = arguments[0];
-        setTimeout(function() {
-            done();
-            window.print();
-        }, 0);
-    """
-    scommand("POST", "/url", dict(url=inline(document)))
-    scommand('POST', '/execute/async', dict(script=spawn, args=[]))
-
-    time.sleep(4)
-
-    result = scommand("GET", "/title")
-    assert_error(result, "unexpected alert open")
+#def test_title_with_non_simple_dialog(psession):
+#    document = "<title>With non-simple dialog</title><h2>Hello</h2>"
+#    spawn = """
+#        var done = arguments[0];
+#        setTimeout(function() {
+#            done();
+#            window.print();
+#        }, 0);
+#    """
+#    psession.send_command("POST", "url", dict(url=inline(document)))
+#    psession.send_command('POST', 'execute/async', dict(script=spawn, args=[]))
+#
+#    time.sleep(4)
+#
+#    result = psession.send_command("GET", "title")
+#    assert_error(result, "unexpected alert open")
 
 # 3. Let title be the initial value of the title IDL attribute of the current
 #    top-level browsing context's active document.
-def test_title_from_top_context(scommand):
-    scommand("POST", "/url", dict(url=inline("<title>Foobar</title><h2>Hello</h2>")))
-    result = scommand("GET", "/title")
+def test_title_from_top_context(psession):
+    psession.send_command("POST", "url", dict(url=inline("<title>Foobar</title><h2>Hello</h2>")))
+    result = psession.send_command("GET", "title")
     assert result.status == 200
     assert result.body["value"] == "Foobar"
 
-def test_title_without_element(scommand):
-    scommand("POST", "/url", dict(url=inline("<h2>Hello</h2>")))
-    result = scommand("GET", "/title")
+def test_title_without_element(psession):
+    psession.send_command("POST", "url", dict(url=inline("<h2>Hello</h2>")))
+    result = psession.send_command("GET", "title")
     assert result.status == 200
     assert result.body["value"] == ""
 
-def test_title_from_frame(scommand, switch_to_new_frame):
-    scommand("POST", "/url", dict(url=inline("<title>Parent</title>parent")))
+def test_title_from_frame(psession, switch_to_new_frame):
+    psession.send_command("POST", "url", dict(url=inline("<title>Parent</title>parent")))
 
     switch_to_new_frame()
     switch_to_new_frame()
 
-    result = scommand("GET", "/title")
+    result = psession.send_command("GET", "title")
 
     assert result.status == 200
     assert result.body["value"] == "Parent"
