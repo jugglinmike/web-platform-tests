@@ -43,6 +43,11 @@ def test_title_dismiss_dialog_confirm(scommand, create_dialog):
 
     wd_assert.success(result, "Dismiss `confirm` dialog")
 
+# This test may produce a dialog that cannot be dismissed using the WebDriver
+# protocol. In such cases, the session is effectively corrupted and all
+# tests in this module that follow will fail spuriously.
+#
+# TODO: Research techniques for session isolation.
 #def test_title_with_non_simple_dialog(scommand):
 #    document = "<title>With non-simple dialog</title><h2>Hello</h2>"
 #    spawn = """
