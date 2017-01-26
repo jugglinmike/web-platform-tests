@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from util.assert_error import assert_error
+import util.wd_assert as wd_assert
 from util.request import request
 
 @pytest.fixture()
@@ -96,7 +96,7 @@ def create_dialog(scommand, request):
             # successfully. In that case, the text must be different than that of
             # this fixture's dialog.
             try:
-                assert_error(result, 'no such alert')
+                wd_assert.error(result, 'no such alert')
             except:
                 assert result.status == 200
                 assert result.body["value"] != "text {0}".format(dialog_id)

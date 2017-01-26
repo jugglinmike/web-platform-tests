@@ -31,9 +31,13 @@ errors = {
     "unsupported operation": 500,
 }
 
-def assert_error(result, name):
+def error(result, name):
     assert result.status == errors[name]
     assert result.body["value"]["error"] == name
     assert isinstance(result.body["value"]["message"], basestring)
     if not "WD_GECKO" in os.environ:
         assert isinstance(result.body["value"]["stacktrace"], basestring)
+
+def success(result, value):
+    assert result.status == 200
+    assert result.body["value"] == value

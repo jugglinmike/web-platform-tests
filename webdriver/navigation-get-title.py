@@ -1,7 +1,7 @@
 import pytest
 import urllib
 
-from util.assert_error import assert_error
+import util.wd_assert as wd_assert
 
 def inline(doc):
     return "data:text/html;charset=utf-8,%s" % urllib.quote(doc)
@@ -10,8 +10,10 @@ def inline(doc):
 #    with error code no such window.
 def test_title_from_closed_context(scommand, switch_to_inactive):
     switch_to_inactive()
+
     result = scommand("GET", "/title")
-    assert_error(result, "no such window")
+
+    wd_assert.error(result, "no such window")
 
 # 2. Handle any user prompts and return its value if it is an error.
 def test_title_dismiss_dialog_alert(scommand, create_dialog):
@@ -20,8 +22,8 @@ def test_title_dismiss_dialog_alert(scommand, create_dialog):
     create_dialog(dialog_type='alert', verify_dismissed=True)
 
     result = scommand("GET", "/title")
-    assert result.status == 200
-    assert result.body["value"] == "Dismiss `alert` dialog"
+
+    wd_assert.success(result, "Dismiss `alert` dialog")
 
 def test_title_dismiss_dialog_prompt(scommand, create_dialog):
     document = "<title>Dismiss `prompt` dialog</title><h2>Hello</h2>"
@@ -29,8 +31,8 @@ def test_title_dismiss_dialog_prompt(scommand, create_dialog):
     create_dialog(dialog_type='prompt', verify_dismissed=True)
 
     result = scommand("GET", "/title")
-    assert result.status == 200
-    assert result.body["value"] == "Dismiss `prompt` dialog"
+
+    wd_assert.success(result, "Dismiss `prompt` dialog")
 
 def test_title_dismiss_dialog_confirm(scommand, create_dialog):
     document = "<title>Dismiss `confirm` dialog</title><h2>Hello</h2>"
@@ -38,8 +40,8 @@ def test_title_dismiss_dialog_confirm(scommand, create_dialog):
     create_dialog(dialog_type='confirm', verify_dismissed=True)
 
     result = scommand("GET", "/title")
-    assert result.status == 200
-    assert result.body["value"] == "Dismiss `confirm` dialog"
+
+    wd_assert.success(result, "Dismiss `confirm` dialog")
 
 #def test_title_with_non_simple_dialog(scommand):
 #    document = "<title>With non-simple dialog</title><h2>Hello</h2>"
@@ -54,21 +56,19 @@ def test_title_dismiss_dialog_confirm(scommand, create_dialog):
 #    scommand('POST', '/execute/async', dict(script=spawn, args=[]))
 #
 #    result = scommand("GET", "/title")
-#    assert_error(result, "unexpected alert open")
+#    wd_assert.error(result, "unexpected alert open")
 
 # 3. Let title be the initial value of the title IDL attribute of the current
 #    top-level browsing context's active document.
 def test_title_from_top_context(scommand):
     scommand("POST", "/url", dict(url=inline("<title>Foobar</title><h2>Hello</h2>")))
     result = scommand("GET", "/title")
-    assert result.status == 200
-    assert result.body["value"] == "Foobar"
+    wd_assert.success(result, "Foobar")
 
 def test_title_without_element(scommand):
     scommand("POST", "/url", dict(url=inline("<h2>Hello</h2>")))
     result = scommand("GET", "/title")
-    assert result.status == 200
-    assert result.body["value"] == ""
+    wd_assert.success(result, "")
 
 def test_title_from_frame(scommand, switch_to_new_frame):
     scommand("POST", "/url", dict(url=inline("<title>Parent</title>parent")))
@@ -78,5 +78,4 @@ def test_title_from_frame(scommand, switch_to_new_frame):
 
     result = scommand("GET", "/title")
 
-    assert result.status == 200
-    assert result.body["value"] == "Parent"
+    wd_assert.success(result, "Parent")
