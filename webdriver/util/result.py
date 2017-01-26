@@ -18,6 +18,8 @@ def validate_response(response):
         assert "value" in self.body
 
 class Result():
+    """Wrap (and optionally validate) an HTTP response object for the WebDriver
+    protocol."""
     def __init__(self, response, validate):
         self.status = response.status
         self.body = response.read()

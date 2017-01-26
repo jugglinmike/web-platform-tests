@@ -29,6 +29,8 @@ def scommand(command, session):
 
 @pytest.fixture()
 def switch_to_inactive(scommand):
+    """Create a new browsing context, switch to that new context, and then
+    delete the context."""
     def switch_to_inactive():
         initial = scommand("GET", "/window/handles").body["value"]
 
@@ -67,6 +69,8 @@ def switch_to_new_frame(scommand):
 
 @pytest.fixture()
 def create_dialog(scommand, request):
+    """Create a dialog (one of "alert", "prompt", or "confirm"), optionally
+    validating that the dialog has been dismissed following test execution."""
     dismissed_values = {
         "alert": None,
         "prompt": None,
