@@ -70,6 +70,21 @@ def test_title_without_element(scommand):
     result = scommand("GET", "/title")
     wd_assert.success(result, "")
 
+def test_title_after_modification(scommand):
+    modify = "document.title = 'updated';"
+    scommand("POST", "/url", dict(url=inline("<title>Initial</title><h2>Hello</h2>")))
+    scommand("POST", "/execute/sync", dict(script=modify, args=[]))
+
+    result = scommand("GET", "/title")
+
+    wd_assert.success(result, "updated")
+
+def test_title_strip_and_collapse(scommand):
+    document = "<title>   a b\tc\nd\t \n e\t\n </title><h2>Hello</h2>"
+    scommand("POST", "/url", dict(url=inline(document)))
+    result = scommand("GET", "/title")
+    wd_assert.success(result, "a b c d e")
+
 def test_title_from_frame(scommand, switch_to_new_frame):
     scommand("POST", "/url", dict(url=inline("<title>Parent</title>parent")))
 
