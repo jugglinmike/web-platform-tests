@@ -17,31 +17,37 @@ def test_title_from_closed_context(scommand, switch_to_inactive):
 
 # 2. Handle any user prompts and return its value if it is an error.
 def test_title_dismiss_dialog_alert(scommand, create_dialog):
-    document = "<title>Dismiss `alert` dialog</title><h2>Hello</h2>"
+    document = "<title>Dismisses`alert` dialog</title><h2>Hello</h2>"
     scommand("POST", "/url", dict(url=inline(document)))
-    create_dialog(dialog_type='alert', verify_dismissed=True)
+    assert_handled = create_dialog('alert')
 
     result = scommand("GET", "/title")
 
-    wd_assert.success(result, "Dismiss `alert` dialog")
+    wd_assert.success(result, "Dismisses`alert` dialog")
+
+    assert_handled(None)
 
 def test_title_dismiss_dialog_prompt(scommand, create_dialog):
-    document = "<title>Dismiss `prompt` dialog</title><h2>Hello</h2>"
+    document = "<title>Dismisses`prompt` dialog</title><h2>Hello</h2>"
     scommand("POST", "/url", dict(url=inline(document)))
-    create_dialog(dialog_type='prompt', verify_dismissed=True)
+    assert_handled = create_dialog('prompt')
 
     result = scommand("GET", "/title")
 
-    wd_assert.success(result, "Dismiss `prompt` dialog")
+    wd_assert.success(result, "Dismisses`prompt` dialog")
+
+    assert_handled(None)
 
 def test_title_dismiss_dialog_confirm(scommand, create_dialog):
-    document = "<title>Dismiss `confirm` dialog</title><h2>Hello</h2>"
+    document = "<title>Dismisses`confirm` dialog</title><h2>Hello</h2>"
     scommand("POST", "/url", dict(url=inline(document)))
-    create_dialog(dialog_type='confirm', verify_dismissed=True)
+    assert_handled = create_dialog('confirm')
 
     result = scommand("GET", "/title")
 
-    wd_assert.success(result, "Dismiss `confirm` dialog")
+    wd_assert.success(result, "Dismisses`confirm` dialog")
+
+    assert_handled(False)
 
 # This test may produce a dialog that cannot be dismissed using the WebDriver
 # protocol. In such cases, the session is effectively corrupted and all

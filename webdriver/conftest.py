@@ -68,31 +68,33 @@ def switch_to_new_frame(scommand):
     return switch_to_new_frame
 
 @pytest.fixture()
-def create_dialog(scommand, request):
-    """Create a dialog (one of "alert", "prompt", or "confirm"), optionally
-    validating that the dialog has been dismissed following test execution."""
-    dismissed_values = {
-        "alert": None,
-        "prompt": None,
-        "confirm": False
-    }
+def create_dialog(scommand):
+    """Create a dialog (one of "alert", "prompt", or "confirm") and provide a
+    function to validate that a the dialog has been "handled" (either accepted
+    or dismissed) by returning some value."""
 
-    def create_dialog(dialog_type, verify_dismissed):
+    def create_dialog(dialog_type):
         dialog_id = str(uuid4())
-        dismissed_value = dismissed_values[dialog_type]
+        dialog_text = "text " + dialog_id
 
+        # Script completion and modal summoning are scheduled on two separate
+        # turns of the event loop to ensure that both occur regardless of how
+        # the user agent manages script execution.
         spawn = """
             var done = arguments[0];
             window.__WEBDRIVER = "initial value {0}";
             setTimeout(function() {{
-                done(null);
-                window.__WEBDRIVER = window.{1}("text {0}");
+                done();
             }}, 0);
-        """.format(dialog_id, dialog_type)
+            setTimeout(function() {{
+                window.__WEBDRIVER = window.{1}("{2}");
+            }}, 0);
+        """.format(dialog_id, dialog_type, dialog_text)
 
-        scommand('POST', '/execute/async', dict(script=spawn, args=[]))
+        result = scommand('POST', '/execute/async', dict(script=spawn, args=[]))
+        assert result.status == 200
 
-        def verify():
+        def assert_handled(expected_value):
             result = scommand('GET', '/alert/text')
 
             # If there were any existing dialogs prior to the creation of this
@@ -102,15 +104,17 @@ def create_dialog(scommand, request):
             try:
                 wd_assert.error(result, 'no such alert')
             except:
-                assert result.status == 200
-                assert result.body["value"] != "text {0}".format(dialog_id)
+                assert result.status == 200 and result.body["value"] != dialog_text, \
+                    "Dialog was not handled."
 
             probe = 'return window.__WEBDRIVER;'
             result = scommand('POST', '/execute/sync', dict(script=probe, args=[]))
-            assert result.status == 200
-            assert result.body["value"] == dismissed_value, "Dialog was dismissed, not accepted"
 
-        if verify_dismissed:
-            request.addfinalizer(verify)
+            assert result.status == 200, \
+                "Unable to verify that dialog was handled with expected value"
+            assert result.body["value"] == expected_value, \
+                "Dialog was not handled with expected value"
+
+        return assert_handled
 
     return create_dialog
