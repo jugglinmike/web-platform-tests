@@ -1,14 +1,10 @@
 import json
 import pytest
 import types
-import urllib
 
 import webdriver
 
-
-def inline(doc):
-    return "data:text/html;charset=utf-8,%s" % urllib.quote(doc)
-
+from util.inline import inline
 
 alert_doc = inline("<script>window.alert()</script>")
 frame_doc = inline("<p>frame")

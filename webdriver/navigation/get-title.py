@@ -1,10 +1,7 @@
 import pytest
-import urllib
 
+from util.inline import inline
 import util.wd_assert as wd_assert
-
-def inline(doc):
-    return "data:text/html;charset=utf-8,%s" % urllib.quote(doc)
 
 @pytest.fixture
 def session(session):
@@ -55,17 +52,18 @@ def test_title_dismiss_dialog_confirm(session, create_dialog):
 
     assert_handled(False)
 
-# This test may produce a dialog that cannot be dismissed using the WebDriver
-# protocol. In such cases, the session is effectively corrupted and all
-# tests in this module that follow will fail spuriously.
-#
-# TODO: Research techniques for session isolation.
+# The behavior of the `window.print` function is platform-dependent and may not
+# trigger the creation of a dialog at all. Therefore, this test should only be
+# run in contexts that support the dialog (a condition that may not be
+# determined automatically).
 #def test_title_with_non_simple_dialog(session):
 #    document = "<title>With non-simple dialog</title><h2>Hello</h2>"
 #    spawn = """
 #        var done = arguments[0];
 #        setTimeout(function() {
 #            done();
+#        }, 0);
+#        setTimeout(function() {
 #            window.print();
 #        }, 0);
 #    """
