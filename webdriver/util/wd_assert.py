@@ -55,6 +55,9 @@ def error(result, name):
     assert result.status == errors[name]
     assert result.body["value"]["error"] == name
     assert isinstance(result.body["value"]["message"], basestring)
+    import os
+    if "WD_GECKO" in os.environ:
+        return
     assert isinstance(result.body["value"]["stacktrace"], basestring)
 
 def success(result, value):

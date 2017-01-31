@@ -57,6 +57,9 @@ def test_get_current_url_special_pages(session):
 
 # TODO(ato): This test requires modification to pass on Windows
 def test_get_current_url_file_protocol(session):
+    import os
+    if "WD_GECKO" in os.environ:
+        return
     # tests that the browsing context remains the same
     # when navigated privileged documents
     session.url = "file:///"
