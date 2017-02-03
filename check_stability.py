@@ -14,9 +14,8 @@ import zipfile
 from cStringIO import StringIO
 from collections import defaultdict
 from ConfigParser import RawConfigParser
-from io import BytesIO
+from io import BytesIO, StringIO
 from urlparse import urljoin
-from tools.manifest import manifest
 
 import requests
 
@@ -26,13 +25,14 @@ LogHandler = None
 LogLevelFilter = None
 StreamHandler = None
 TbplFormatter = None
+manifest = None
 reader = None
 wptcommandline = None
 wptrunner = None
 wpt_root = None
 wptrunner_root = None
 
-logger = logging.getLogger(os.path.splitext(__file__)[0])
+logger = None
 
 def do_delayed_imports():
     """Import and set up modules only needed if execution gets to this point."""
@@ -40,12 +40,14 @@ def do_delayed_imports():
     global LogLevelFilter
     global StreamHandler
     global TbplFormatter
+    global manifest
     global reader
     global wptcommandline
     global wptrunner
     from mozlog import reader
     from mozlog.formatters import TbplFormatter
     from mozlog.handlers import BaseHandler, LogLevelFilter, StreamHandler
+    from tools.manifest import manifest
     from wptrunner import wptcommandline, wptrunner
     setup_log_handler()
     setup_action_filter()
@@ -58,8 +60,6 @@ def setup_logging():
     handler.setFormatter(formatter)
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
-
-setup_logging()
 
 
 def setup_action_filter():
@@ -106,6 +106,29 @@ class TravisFold(object):
     def __exit__(self, type, value, traceback):
         """Emit fold end syntax."""
         print("travis_fold:end:%s" % self.name, file=sys.stderr)
+
+
+class CappedIO(StringIO):
+    """Wrap a file object, counting the total bytes written to that file and
+    disabling writing once some limit has been reached."""
+    def __init__(self, original, capacity, warning_msg):
+        self.original = original
+        self.capacity = capacity - 2 - len(warning_msg)
+        self.warning_msg = warning_msg
+        self.count = 0
+        StringIO.__init__(self)
+
+    def write(self, msg):
+        encoded = msg.encode("utf8", "backslashreplace").decode("utf8")
+        length = len(encoded)
+        self.count += length
+
+        if self.count > self.capacity:
+            self.write = lambda x: None
+            encoded = "%s\n%s\n" % (encoded[0:self.capacity - self.count],
+                                    self.warning_msg)
+
+        self.original.write(encoded)
 
 
 class GitHub(object):
@@ -732,6 +755,11 @@ def get_parser():
                         # This is a workaround to get what should be the same value
                         default=os.environ.get("TRAVIS_REPO_SLUG").split('/')[0],
                         help="Travis user name")
+    parser.add_argument("--output-cap",
+                        action="store",
+                        default=sys.maxint,
+                        type=int,
+                        help="Maximum number of bytes to write to standard output/error")
     parser.add_argument("product",
                         action="store",
                         help="Product to run against (`browser-name` or 'browser-name:channel')")
@@ -742,10 +770,15 @@ def main():
     """Perform check_stability functionality and return exit code."""
     global wpt_root
     global wptrunner_root
+    global logger
 
     retcode = 0
     parser = get_parser()
     args = parser.parse_args()
+
+    sys.stdout = CappedIO(sys.stdout, args.output_cap, 'Maximum has been reached')
+    logger = logging.getLogger(os.path.splitext(__file__)[0])
+    setup_logging()
 
     wpt_root = os.path.abspath(os.curdir)
     wptrunner_root = os.path.normpath(os.path.join(wpt_root, "..", "wptrunner"))
