@@ -564,12 +564,40 @@ def setup_log_handler():
         """
         def __init__(self):
             self.results = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+            self.results = []
+
+        def find_or_create(self, data):
+            parent_test = None
+
+            for test in self.results:
+                if test["name"] != data["test"]:
+                    continue
+
+                for subtest in test["subtests"]:
+                    if subtest["name"] == data["subtest"]:
+                        return subtest
+
+                parent_test = test
+                break
+            else:
+                parent_test = {"name": data["name"], "subtests": []}
+                self.results.append(parent_test)
+
+            subtest = {"name": data["subtest"], "status": { "PASS": 0, "FAIL": 0 }}
+            parent_test.subtests.append(subtest)
+
+            return subtest
 
         def test_status(self, data):
-            self.results[data["test"]][data.get("subtest")][data["status"]] += 1
+            #self.results[data["test"]][data.get("subtest")][data["status"]] += 1
+            subtest = self.find_or_create(data)
+            subtest["status"][data["status"]] += 1
 
         def test_end(self, data):
-            self.results[data["test"]][None][data["status"]] += 1
+            #self.results[data["test"]][None][data["status"]] += 1
+            predecate = {"test": data["test"], "subtest": None}
+            subtest = self.find_or_create(predecate)
+            subtest["status"][data["status"]] += 1
 
 
 def is_inconsistent(results_dict, iterations):
@@ -598,10 +626,10 @@ def process_results(log, iterations):
     handler = LogHandler()
     reader.handle_log(reader.read(log), handler)
     results = handler.results
-    for test, test_results in results.iteritems():
-        for subtest, result in test_results.iteritems():
-            if is_inconsistent(result, iterations):
-                inconsistent.append((test, subtest, result))
+    for test in results:
+        for subtest in test["subtests"]:
+            if is_inconsistent(subtest, iterations):
+                inconsistent.append((test["name"], subtest["name"], subtest["results"]))
     return results, inconsistent
 
 
@@ -657,7 +685,7 @@ def write_inconsistent(inconsistent, iterations):
 def write_results(results, iterations, comment_pr):
     """Output all test results to logger.info."""
     logger.info("## All results ##\n")
-    for test, test_results in results.iteritems():
+    for test in results:
         baseurl = "http://w3c-test.org/submissions"
         if "https" in os.path.splitext(test)[0].split(".")[1:]:
             baseurl = "https://w3c-test.org/submissions"
