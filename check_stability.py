@@ -236,9 +236,9 @@ class Firefox(Browser):
         """Return Firefox-specific wpt-runner arguments."""
         return {
             "product": "firefox",
-            "binary": self.binary % root,
+            "binary": "/usr/bin/firefox",
             "certutil_binary": "certutil",
-            "webdriver_binary": "%s/geckodriver" % root,
+            "webdriver_binary": "../../downloads/geckodriver",
             "prefs_root": "%s/profiles" % root,
         }
 
@@ -400,25 +400,25 @@ def get_branch_point(user):
         # Otherwise we aren't on a PR, so we try to find commits that are only in the
         # current branch c.f.
         # http://stackoverflow.com/questions/13460152/find-first-ancestor-commit-in-another-branch
-        head = git("rev-parse", "HEAD")
+        branch_point = git("rev-parse", "master")
         # To do this we need all the commits in the local copy
-        fetch_wpt(user, "--unshallow", "+refs/heads/*:refs/remotes/origin/*")
-        not_heads = [item for item in git("rev-parse", "--not", "--all").split("\n")
-                     if not head in item]
-        commits = git("rev-list", "HEAD", *not_heads).split("\n")
-        first_commit = commits[-1]
-        branch_point = git("rev-parse", first_commit + "^")
-        # The above can produce a too-early commit if we are e.g. on master and there are
-        # preceding changes that were rebased and so aren't on any other branch. To avoid
-        # this issue we check for the later of the above branch point and the merge-base
-        # with master
-        merge_base = git("merge-base", "HEAD", "origin/master")
-        if (branch_point != merge_base and
-            not git("log", "--oneline", "%s..%s" % (merge_base, branch_point)).strip()):
-            logger.debug("Using merge-base as the branch point")
-            branch_point = merge_base
-        else:
-            logger.debug("Using first commit on another branch as the branch point")
+        #fetch_wpt(user, "--unshallow", "+refs/heads/*:refs/remotes/origin/*")
+        #not_heads = [item for item in git("rev-parse", "--not", "--all").split("\n")
+        #             if not head in item]
+        #commits = git("rev-list", "HEAD", *not_heads).split("\n")
+        #first_commit = commits[-1]
+        #branch_point = git("rev-parse", first_commit + "^")
+        ## The above can produce a too-early commit if we are e.g. on master and there are
+        ## preceding changes that were rebased and so aren't on any other branch. To avoid
+        ## this issue we check for the later of the above branch point and the merge-base
+        ## with master
+        #merge_base = git("merge-base", "HEAD", "origin/master")
+        #if (branch_point != merge_base and
+        #    not git("log", "--oneline", "%s..%s" % (merge_base, branch_point)).strip()):
+        #    logger.debug("Using merge-base as the branch point")
+        #    branch_point = merge_base
+        #else:
+        #    logger.debug("Using first commit on another branch as the branch point")
 
     logger.debug("Branch point from master: %s" % branch_point)
     return branch_point
@@ -758,7 +758,7 @@ def main():
             logger.critical("Unrecognised browser %s" % browser_name)
             return 1
 
-        fetch_wpt(args.user, "master:master")
+        #fetch_wpt(args.user, "master:master")
 
         head_sha1 = get_sha1()
         logger.info("Testing web-platform-tests at revision %s" % head_sha1)
@@ -774,12 +774,12 @@ def main():
             return 0
 
         build_manifest()
-        install_wptrunner()
+        #install_wptrunner()
         do_delayed_imports()
 
         browser = browser_cls()
-        browser.install()
-        browser.install_webdriver()
+        #browser.install()
+        #browser.install_webdriver()
 
         try:
             version = browser.version(args.root)
