@@ -41,7 +41,7 @@ async_test(function(t) {
             completeCount,
             0,
             'test is not considered "complete" following resolution of ' +
-  		    'first promise'
+            'first promise'
           );
           resolve2();
           t.done();
@@ -51,6 +51,41 @@ async_test(function(t) {
 </script>
 <script type="text/json" id="expected">
 {
+  "status": {
+    "ERROR": 1,
+    "OK": 0,
+    "TIMEOUT": 2,
+    "message": null,
+    "stack": null,
+    "status": 0
+  },
+  "tests": [
+    {
+      "FAIL": 1,
+      "NOTRUN": 3,
+      "PASS": 0,
+      "TIMEOUT": 2,
+      "index": 1,
+      "message": null,
+      "name": "synchronous test with asynchronous cleanup",
+      "properties": {},
+      "stack": null,
+      "status": 0
+    },
+    {
+      "FAIL": 1,
+      "NOTRUN": 3,
+      "PASS": 0,
+      "TIMEOUT": 2,
+      "index": 2,
+      "message": null,
+      "name": "testharness should wait for provided Promises to resolve",
+      "properties": {},
+      "stack": null,
+      "status": 0
+    }
+  ],
+  "type": "complete"
 }
 </script>
 </body>

@@ -1513,7 +1513,6 @@ policies and contribution forms [3].
 
         clearTimeout(this.timeout_id);
         this.cleanup()
-          .catch(function() {})
           .then(function() {
               this_obj.phase = this_obj.phases.COMPLETE;
               tests.result(this_obj);
@@ -1543,11 +1542,24 @@ policies and contribution forms [3].
     }
 
     Test.prototype.cleanup = function() {
+        var this_obj = this;
         var promises = map(this.cleanup_callbacks,
                            function(cleanup_callback) {
-                               return Promise.resolve(cleanup_callback());
+                               return new Promise(function(resolve) {
+                                   resolve(cleanup_callback());
+                                 });
                            });
-        return all_settled(promises);
+        return all_settled(promises)
+            .catch(function(resolutions) {
+                var msg = "Test named '" + this_obj.name + "' specified a " +
+                    "'cleanup' function which failed.";
+                return new Promise(function(resolve) {
+                    setTimeout(function() {
+                        resolve();
+                        throw new Error(msg);
+                      }, 0);
+                  });
+              });
     };
 
     /*
@@ -1917,7 +1929,6 @@ policies and contribution forms [3].
             {
                 if (x.phase < x.phases.COMPLETE) {
                     return x.cleanup()
-                      .catch(function() {})
                       .then(function() {
                           this_obj.notify_result(x);
                           x.phase = x.phases.COMPLETE;
