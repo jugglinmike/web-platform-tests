@@ -1,0 +1,57 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Test#add_cleanup with Promise-returning functions (rejection handling)</title>
+<script src="../../testharness.js"></script>
+<script src="../../testharnessreport.js"></script>
+</head>
+<body>
+<div id="log"></div>
+
+<script>
+var resolve, reject;
+var completeCount = 0;
+test(function(t) {
+  add_result_callback(function(result_t) {
+    if (result_t.name === t.name) {
+      completeCount += 1;
+    }
+  });
+  t.add_cleanup(function() {
+    return new Promise(function(_, _reject) { reject = _reject; });
+  });
+  t.add_cleanup(function() {
+    return new Promise(function(_resolve) { resolve = _resolve; });
+  });
+}, 'synchronous test with asynchronous cleanup including rejection');
+
+async_test(function(t) {
+  assert_equals(
+    completeCount, 0, 'test is not immediately considered "complete"'
+  );
+  Promise.resolve().then(t.step_func(function() {
+      assert_equals(
+        completeCount, 0, 'test is not asynchronously considered "complete"'
+      );
+
+      reject();
+
+      Promise.resolve().then(t.step_func(function() {
+          assert_equals(
+            completeCount,
+            0,
+            'test is not considered "complete" following rejection of ' +
+              'first promise'
+          );
+          resolve();
+          t.done();
+        }), 1000);
+    }));
+}, 'testharness should wait for provided Promises to settle');
+</script>
+<script type="text/json" id="expected">
+{
+}
+</script>
+</body>
+</html>

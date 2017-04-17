@@ -1502,6 +1502,7 @@ policies and contribution forms [3].
 
     Test.prototype.done = function()
     {
+        var this_obj = this;
         if (this.phase == this.phases.COMPLETE) {
             return;
         }
@@ -1510,18 +1511,43 @@ policies and contribution forms [3].
             this.set_status(this.PASS, null);
         }
 
-        this.phase = this.phases.COMPLETE;
-
         clearTimeout(this.timeout_id);
-        tests.result(this);
-        this.cleanup();
+        this.cleanup()
+          .catch(function() {})
+          .then(function() {
+              this_obj.phase = this_obj.phases.COMPLETE;
+              tests.result(this_obj);
+            });
     };
 
+    function all_settled(promises) {
+      var resolutions = {
+        fulfillments: [],
+        rejections: []
+      };
+      var fixed = map(promises, function(promise) {
+          return promise.then(function(value) {
+              resolutions.fulfillments.push(value);
+            }, function(value) {
+              resolutions.rejections.push(value);
+            });
+        });
+
+      return Promise.all(fixed)
+        .then(function() {
+            if (resolutions.rejections.length) {
+              throw resolutions;
+            }
+            return resolutions;
+          });
+    }
+
     Test.prototype.cleanup = function() {
-        forEach(this.cleanup_callbacks,
-                function(cleanup_callback) {
-                    cleanup_callback();
-                });
+        var promises = map(this.cleanup_callbacks,
+                           function(cleanup_callback) {
+                               return Promise.resolve(cleanup_callback());
+                           });
+        return all_settled(promises);
     };
 
     /*
@@ -1557,7 +1583,7 @@ policies and contribution forms [3].
         return clone;
     };
 
-    RemoteTest.prototype.cleanup = function() {};
+    RemoteTest.prototype.cleanup = function() { return Promise.resolve(); };
     RemoteTest.prototype.phases = Test.prototype.phases;
     RemoteTest.prototype.update_state_from = function(clone) {
         this.status = clone.status;
@@ -1885,19 +1911,31 @@ policies and contribution forms [3].
         if (this.phase === this.phases.COMPLETE) {
             return;
         }
-        this.phase = this.phases.COMPLETE;
         var this_obj = this;
-        this.tests.forEach(
+        var promises = map(this.tests,
             function(x)
             {
                 if (x.phase < x.phases.COMPLETE) {
-                    this_obj.notify_result(x);
-                    x.cleanup();
-                    x.phase = x.phases.COMPLETE;
+                    return x.cleanup()
+                      .catch(function() {})
+                      .then(function() {
+                          this_obj.notify_result(x);
+                          x.phase = x.phases.COMPLETE;
+                        });
                 }
+                return Promise.resolve();
             }
         );
-        this.notify_complete();
+        function notify() {
+            this_obj.phase = this_obj.phases.COMPLETE;
+            this_obj.notify_complete();
+        }
+        if (this.status.status === this.status.TIMEOUT) {
+            notify();
+        } else {
+            all_settled(promises)
+              .then(notify, notify);
+        }
     };
 
     /*
