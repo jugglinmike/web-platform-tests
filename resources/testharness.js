@@ -527,13 +527,12 @@ policies and contribution forms [3].
                 test.add_cleanup(resolve);
             });
             var promise = test.step(func, test, test);
-            test.step(function() {
-                assert_not_equals(promise, undefined);
-            });
-            Promise.resolve(promise).then(
+            Promise.resolve(promise)
+                .then(test.step_func(
                     function() {
+                        assert_not_equals(promise, undefined);
                         test.done();
-                    })
+                    }))
                 .catch(test.step_func(
                     function(value) {
                         if (value instanceof AssertionError) {
