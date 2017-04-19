@@ -531,7 +531,7 @@ policies and contribution forms [3].
                 .then(test.step_func(
                     function() {
                         assert_not_equals(promise, undefined);
-                        test.done();
+                        return test.done();
                     }))
                 .catch(test.step_func(
                     function(value) {
@@ -639,10 +639,13 @@ policies and contribution forms [3].
         if (tests.tests.length === 0) {
             tests.set_file_is_test();
         }
+		var op;
         if (tests.file_is_test) {
-            tests.tests[0].done();
-        }
-        tests.end_wait();
+            op = tests.tests[0].done();
+        } else {
+		    op = Promise.resolve();
+		}
+        op.then(function() { tests.end_wait(); });
     }
 
     function generate_tests(func, args, properties) {
@@ -1503,7 +1506,7 @@ policies and contribution forms [3].
     {
         var this_obj = this;
         if (this.phase == this.phases.COMPLETE) {
-            return;
+            return Promise.resolve();
         }
 
         if (this.phase <= this.phases.STARTED) {
@@ -1511,7 +1514,7 @@ policies and contribution forms [3].
         }
 
         clearTimeout(this.timeout_id);
-        this.cleanup()
+        return this.cleanup()
           .then(function() {
               this_obj.phase = this_obj.phases.COMPLETE;
               tests.result(this_obj);
@@ -1606,6 +1609,7 @@ policies and contribution forms [3].
     };
     RemoteTest.prototype.done = function() {
         this.phase = this.phases.COMPLETE;
+		return Promise.resolve();
     }
 
     /*
@@ -1631,7 +1635,7 @@ policies and contribution forms [3].
         this.message_target = message_target;
         this.message_handler = function(message) {
             var passesFilter = !message_filter || message_filter(message);
-            if (this_obj.running && message.data && passesFilter &&
+            if (message.data && passesFilter &&
                 (message.data.type in this_obj.message_handlers)) {
                 this_obj.message_handlers[message.data.type].call(this_obj, message.data);
             }
@@ -1671,8 +1675,10 @@ policies and contribution forms [3].
     RemoteContext.prototype.test_done = function(data) {
         var remote_test = this.tests[data.test.index];
         remote_test.update_state_from(data.test);
-        remote_test.done();
-        tests.result(remote_test);
+        remote_test.done()
+		  .then(function() {
+            tests.result(remote_test);
+		  });
     };
 
     RemoteContext.prototype.remote_done = function(data) {
@@ -1682,11 +1688,12 @@ policies and contribution forms [3].
             tests.status.message = data.status.message;
             tests.status.stack = data.status.stack;
         }
-        this.message_target.removeEventListener("message", this.message_handler);
         this.running = false;
-        this.remote = null;
-        this.message_target = null;
+
         if (tests.all_done()) {
+            this.message_target.removeEventListener("message", this.message_handler);
+            this.remote = null;
+            this.message_target = null;
             tests.complete();
         }
     };
@@ -2816,6 +2823,7 @@ policies and contribution forms [3].
             stack = e.filename + ":" + e.lineno + ":" + e.colno;
         }
 
+		var op = Promise.resolve();
         if (tests.file_is_test) {
             var test = tests.tests[0];
             if (test.phase >= test.phases.HAS_RESULT) {
@@ -2823,13 +2831,13 @@ policies and contribution forms [3].
             }
             test.set_status(test.FAIL, e.message, stack);
             test.phase = test.phases.HAS_RESULT;
-            test.done();
+            op = test.done();
         } else if (!tests.allow_uncaught_exception) {
             tests.status.status = tests.status.ERROR;
             tests.status.message = e.message;
             tests.status.stack = stack;
         }
-        done();
+        op.then(done);
     };
 
     addEventListener("error", error_handler, false);
