@@ -96,7 +96,7 @@ class Firefox(Browser):
         return "%s%s" % (platform, bits)
 
     def latest_nightly_listing(self):
-        return get("https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/")
+        return get("https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-aurora/")
 
     def get_from_nightly(self, pattern):
         index = self.latest_nightly_listing()
