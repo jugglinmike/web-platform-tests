@@ -20,7 +20,7 @@ if [ $TOXENV == "py27" ] || [ $TOXENV == "pypy" ]; then
   cd $ROOT/resources/test
   firefox --version
   geckodriver --version
-  #tox
+  tox
 fi
 
 cd $ROOT
