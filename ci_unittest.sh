@@ -14,14 +14,15 @@ if [ $TOXENV == "py27" ] || [ $TOXENV == "pypy" ]; then
   cd $ROOT
   pip install --requirement tools/browserutils/requirements.txt
   python tools/browserutils/install.py firefox browser --destination $HOME
-  python tools/browserutils/install.py firefox webdriver --destination $HOME/firefox
+  python tools/browserutils/install.py firefox webdriver --destination $HOME/firefox --version v0.16.1
   export PATH=$HOME/firefox:$PATH
 
   cd $ROOT/resources/test
-  tox
+  geckodriver --version
+  #tox
 fi
 
 cd $ROOT
 
-coverage combine tools tools/wptrunner
-codecov
+#coverage combine tools tools/wptrunner
+#codecov
