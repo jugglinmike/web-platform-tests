@@ -101,7 +101,7 @@ class Firefox(Browser):
     def get_from_nightly(self, pattern):
         index = self.latest_nightly_listing()
         filename = re.compile(pattern).search(index.text).group(1)
-        return get("https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/%s" %
+        return get("https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-aurora/%s" %
                    filename)
 
 
