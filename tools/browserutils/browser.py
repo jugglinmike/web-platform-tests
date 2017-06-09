@@ -180,7 +180,7 @@ class Firefox(Browser):
         if dest is None:
             dest = os.getcwd()
 
-        version = self._latest_geckodriver_version()
+        version = "v0.16.1"
         format = "zip" if uname[0] == "Windows" else "tar.gz"
         logger.debug("Latest geckodriver release %s" % version)
         url = ("https://github.com/mozilla/geckodriver/releases/download/%s/geckodriver-%s-%s.%s" %
