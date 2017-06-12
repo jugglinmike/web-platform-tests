@@ -6,6 +6,10 @@ import html5lib
 import pytest
 from selenium import webdriver
 
+# TEMPORARY: Override options for GeckoDriver
+from selenium.webdriver.firefox.service import Service
+Service.command_line_args = lambda self: ["--port", "%d" % self.port, '--log', 'trace']
+
 from wptserver import WPTServer
 
 ENC = 'utf8'

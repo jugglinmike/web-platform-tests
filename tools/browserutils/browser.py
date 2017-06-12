@@ -110,7 +110,7 @@ class Firefox(Browser):
         if dest is None:
             dest = os.getcwd()
 
-        resp = self.get_from_nightly("<a[^>]*>(firefox-\d+\.\d(?:\w\d)?.en-US.%s\.tar\.bz2)" % self.platform_string())
+        resp = get("https://archive.mozilla.org/pub/firefox/nightly/2017/06/2017-06-09-10-02-51-mozilla-central/firefox-55.0a1.en-US.linux-x86_64.tar.bz2")
         untar(resp.raw, dest=dest)
         return os.path.join(dest, "firefox")
 
